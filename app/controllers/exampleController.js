@@ -1,4 +1,6 @@
 const db = require("../models");
+const WebSocket = require('ws');
+const axios = require('axios');
 // const Model = db.Model;
 // const { Op } = require("sequelize");
 
@@ -104,8 +106,40 @@ exports.refactoreMe2 = async (req, res) => {
   }
 };
 
-exports.callmeWebSocket = (req, res) => {
+exports.callmeWebSocket = (server) => {
   // do something
+  // Inisialisasi WebSocket server
+  const wss = new WebSocket.Server({ server });
+  
+  // Setiap kali ada koneksi WebSocket masuk
+  wss.on('connection', (ws) => {
+    console.log('Client connected');
+
+    // Function untuk fetch data dari API
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('https://livethreatmap.radware.com/api/map/attacks?limit=10');
+        const data = response.data;
+
+        // Kirim data ke client yang terhubung
+        ws.send(JSON.stringify(data));
+      } catch (error) {
+        console.error('Error fetching data from API:', error);
+      }
+    };
+
+    // Jalankan fetch pertama kali saat client terhubung
+    fetchData();
+
+    // Lakukan fetch setiap 3 menit (180000 ms)
+    const interval = setInterval(fetchData, 180000);
+
+    // Ketika koneksi WebSocket ditutup
+    ws.on('close', () => {
+      console.log('Client disconnected');
+      clearInterval(interval); // Hentikan interval jika client terputus
+    });
+  });
 };
 
 exports.getData = (req, res) => {

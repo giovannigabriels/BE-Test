@@ -4,6 +4,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 dotenv.config();
 const app = express();
+const { callmeWebSocket } = require("./app/controllers/exampleController");
 
 const corsOptions = {
   origin: ["http://localhost:8080"],
@@ -39,6 +40,8 @@ require("./app/routes/exampleRoutes")(app);
 
 // set port, listen for requests
 const PORT = process.env.PORT || 7878;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`);
 });
+
+callmeWebSocket(server);
