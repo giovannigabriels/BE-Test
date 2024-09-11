@@ -19,7 +19,7 @@ module.exports = (app) => {
   );
 
   router.post(
-    "/",
+    "/survey",
     // [exampleMiddleware.exampleMiddleware],
     exampleController.refactoreMe2
   );
