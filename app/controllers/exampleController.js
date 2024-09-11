@@ -121,6 +121,26 @@ exports.callmeWebSocket = (server) => {
         const response = await axios.get('https://livethreatmap.radware.com/api/map/attacks?limit=10');
         const data = response.data;
 
+        for (const datum of data) {
+          for (const datum2 of datum) {
+            const saveDataQuery = `
+            INSERT INTO "attack_logs" ("sourceCountry", "destinationCountry", "attackTime", "createdAt", "updatedAt") 
+            VALUES (:sourceCountry, :destinationCountry, :attackTime, NOW(), NOW())`
+
+            //insert to table attack_logs
+            await db.sequelize.query(saveDataQuery,
+              {
+                replacements: {
+                  sourceCountry: datum2.sourceCountry,
+                  destinationCountry: datum2.destinationCountry,
+                  attackTime: datum2.timestamp,
+                },
+                type: db.sequelize.QueryTypes.INSERT,
+              }
+            );
+          }
+        }
+
         // Kirim data ke client yang terhubung
         ws.send(JSON.stringify(data));
       } catch (error) {
