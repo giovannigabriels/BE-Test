@@ -1,6 +1,8 @@
 const db = require("../models");
 const WebSocket = require('ws');
 const axios = require('axios');
+const { QueryTypes } = require("sequelize");
+const client = require('../utils/redis');
 // const Model = db.Model;
 // const { Op } = require("sequelize");
 
@@ -22,7 +24,7 @@ exports.refactoreMe1 = async (req, res) => {
       FROM "surveys";
     `;
 
-    const data = await db.sequelize.query(query, { type: db.sequelize.QueryTypes.SELECT });
+    const data = await db.sequelize.query(query, { type: QueryTypes.SELECT });
 
     const totalIndex = [
       +data[0].totalindex1,
@@ -75,14 +77,14 @@ exports.refactoreMe2 = async (req, res) => {
       // Insert ke tabel Survey
       const surveyResult = await db.sequelize.query(saveSurveyQuery, {
         replacements: { userId, values: `{${values.join(',')}}` },
-        type: db.sequelize.QueryTypes.INSERT,
+        type: QueryTypes.INSERT,
         transaction: t,
       });
 
       // Update tabel User untuk mengubah dosurvey menjadi true
       await db.sequelize.query(updateUserQuery, {
         replacements: { userId },
-        type: db.sequelize.QueryTypes.UPDATE,
+        type: QueryTypes.UPDATE,
         transaction: t,
       });
 
@@ -133,13 +135,18 @@ exports.callmeWebSocket = (server) => {
                 replacements: {
                   sourceCountry: datum2.sourceCountry,
                   destinationCountry: datum2.destinationCountry,
-                  attackTime: datum2.timestamp,
+                  attackTime: datum2.timestamp || new Date(),
                 },
-                type: db.sequelize.QueryTypes.INSERT,
+                type: QueryTypes.INSERT,
               }
             );
           }
         }
+
+        client.del("/getdata")
+        client.del("/getdata?type=")
+        client.del("/getdata?type=attack")
+        client.del("/getdata?type=attacked")
 
         // Kirim data ke client yang terhubung
         ws.send(JSON.stringify(data));
@@ -162,6 +169,75 @@ exports.callmeWebSocket = (server) => {
   });
 };
 
-exports.getData = (req, res) => {
+exports.getData = async (req, res) => {
   // do something
+  try {
+    const url = req.url;
+    const redisKey = `${url}`
+    const cachedData = await client.get(redisKey)
+
+    if (cachedData) {
+        return res.status(200).json({
+          success: true,
+          statusCode: 200,
+          data: JSON.parse(cachedData),
+        });
+    }
+
+    const { type } = req.query;
+
+    const typeQuery = type || "attack"
+
+    let column;
+
+    if (typeQuery === "attack") {
+      column = "sourceCountry"
+    } else if (typeQuery === "attacked" ) {
+      column = "destinationCountry"
+    } else {
+      res.status(200).json({
+        success: true,
+        statusCode: 200,
+        data: {
+          label: [],
+          total: [],
+        },
+      });
+      return
+    }
+
+     // Query untuk menghitung jumlah serangan berdasarkan kolom yang dipilih
+     const countryData = await db.sequelize.query(
+      `SELECT "${column}" AS country, COUNT(*) AS total
+       FROM "attack_logs"
+       GROUP BY "${column}"
+       ORDER BY total DESC`,
+      { type: QueryTypes.SELECT }
+    );
+
+    // Pisahkan hasil query ke dalam labels dan totals
+    const labels = countryData.map(entry => entry.country);
+    const totals = countryData.map(entry => +entry.total);
+
+    const response = {
+      success: true,
+      statusCode: 200,
+      data: {
+        label: labels,
+        total: totals,
+      },
+    }
+
+    //set to redis
+    client.set(redisKey, JSON.stringify(response.data));
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error executing query:', error);
+    res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: 'Internal Server Error',
+    });
+  }
 };
