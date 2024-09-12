@@ -3,6 +3,7 @@ const WebSocket = require('ws');
 const axios = require('axios');
 const { QueryTypes } = require("sequelize");
 const client = require('../utils/redis');
+const jwt = require("../utils/jwt")
 // const Model = db.Model;
 // const { Op } = require("sequelize");
 
@@ -241,3 +242,60 @@ exports.getData = async (req, res) => {
     });
   }
 };
+
+exports.login = async (req, res) => {
+  try {
+    const { digits } = req.body
+
+    const queryFind = `
+      SELECT "id" FROM "users" WHERE "digits" = :digits LIMIT 1
+    `
+
+    const [user] = await db.sequelize.query(queryFind,
+      {
+        replacements: { digits },
+        type: QueryTypes.SELECT
+      }
+    );
+
+    if (!user) {
+      return res.status(401).json({
+        statusCode: 401,
+        success: false,
+        message: 'wrong digits',
+      });
+    }
+
+    const queryUpdate = `
+      UPDATE "users" SET "isLogin" = true WHERE "id" = :id
+    `
+
+    await db.sequelize.query(queryUpdate,
+			{
+				replacements: { id: user?.id },
+			}
+		);
+
+    const payload = {
+      id: user?.id,
+    }
+
+    const token = jwt.generateToken(payload)
+
+    const response = {
+      success: true,
+			statusCode: 201,
+			message: "Success login",
+			token,
+    }
+
+    res.status(201).send(response);
+  } catch (error) {
+    console.error("Error login", error);
+		res.status(500).send({
+			success: false,
+			statusCode: 500,
+			message: "Fail login",
+		});
+  }
+}

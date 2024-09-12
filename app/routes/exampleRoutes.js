@@ -1,5 +1,7 @@
 const { exampleMiddleware } = require("../middleware");
 const exampleController = require("../controllers/exampleController");
+const authentication = require("../middleware/authentication");
+const authorizationAdmin = require("../middleware/authorization");
 
 module.exports = (app) => {
   app.use((req, res, next) => {
@@ -12,21 +14,27 @@ module.exports = (app) => {
 
   const router = require("express").Router();
 
-  router.get(
-    "/surveys/average-results",
-    // [exampleMiddleware.exampleMiddleware],
-    exampleController.refactoreMe1
+  router.post(
+    "/login",
+    exampleController.login
   );
+
+  router.use(authentication);
 
   router.post(
     "/survey",
-    // [exampleMiddleware.exampleMiddleware],
     exampleController.refactoreMe2
+  );
+
+  router.use(authorizationAdmin)
+
+  router.get(
+    "/surveys/average-results",
+    exampleController.refactoreMe1
   );
 
   router.get(
     "/getdata",
-    // [exampleMiddleware.exampleMiddleware],
     exampleController.getData
   );
 
