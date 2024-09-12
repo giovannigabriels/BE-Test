@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "test": "jest --forceExit"
   },
   "author": "daffaquraisy",
   "license": "ISC",
@@ -24,5 +25,9 @@
     "redis": "^4.7.0",
     "sequelize": "^6.16.0",
     "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
   }
 }
