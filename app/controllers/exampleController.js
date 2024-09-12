@@ -27,18 +27,10 @@ exports.refactoreMe1 = async (req, res) => {
 
     const data = await db.sequelize.query(query, { type: QueryTypes.SELECT });
 
-    const totalIndex = [
-      +data[0].totalindex1,
-      +data[0].totalindex2,
-      +data[0].totalindex3,
-      +data[0].totalindex4,
-      +data[0].totalindex5,
-      +data[0].totalindex6,
-      +data[0].totalindex7,
-      +data[0].totalindex8,
-      +data[0].totalindex9,
-      +data[0].totalindex10,
-    ];
+    const totalIndex = [];
+    for (let i = 1; i <= 10; i++) {
+      totalIndex.push(+data[0][`totalindex${i}`]);
+    }
 
     const response = {
       statusCode: 200,
